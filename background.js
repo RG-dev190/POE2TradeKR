@@ -1,37 +1,67 @@
 chrome.action.onClicked.addListener(async () => {
-  const allowedUrl = "https://poe.game.daum.net/trade2/search/poe2/Standard";
+    const initialUrl = "https://poe.game.daum.net"; // 초기 URL
+    const loginUrl = "https://poe.game.daum.net/login/transfer?redir=%2F"; // 로그인 전환 URL
+    const finalUrl = "https://www.pathofexile.com/trade2/search/poe2/Standard"; // 최종 URL
 
-  // 거래소 열림 확인
-  const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    // Step 1: initialUrl로 이동
+    chrome.tabs.create({ url: initialUrl }, (tab) => {
+        console.log(`Navigating to ${initialUrl}...`);
 
-  if (activeTab && activeTab.url.startsWith(allowedUrl)) {
-      console.log("Extension is clicked on the allowed page.");
-      
-      // 새 탭 열어 해외 거래소로 이동
-      const url = "https://poe.game.daum.net/login/transfer?redir=%2Ftrade2";
-      const tab = await chrome.tabs.create({ url });
+        // Step 2: 로딩 완료 후 쿠키 가져오기
+        chrome.tabs.onUpdated.addListener(function listener(tabId, changeInfo) {
+            if (tabId === tab.id && changeInfo.status === "complete") {
+                chrome.tabs.onUpdated.removeListener(listener); // Clean up listener
+                console.log(`${initialUrl} loaded. Retrieving cookies...`);
 
-      // 페이지 로드 완료 대기 후 스크립트 인젝트
-      chrome.tabs.onUpdated.addListener(function listener(tabId, changeInfo) {
-          if (tabId === tab.id && changeInfo.status === "complete") {
-              chrome.tabs.onUpdated.removeListener(listener); // Clean up listener
-              chrome.scripting.executeScript({
-                  target: { tabId: tab.id },
-                  files: ["content.js"]
-              }).then(() => {
-                  console.log("Script injected successfully.");
-              }).catch(err => console.error("Failed to inject script:", err));
-          }
-      });
+                // 모든 쿠키 가져오기
+                chrome.cookies.getAll({ domain: "poe.game.daum.net" }, (cookies) => {
+                    if (chrome.runtime.lastError) {
+                        console.error("Error retrieving cookies:", chrome.runtime.lastError.message);
+                        return;
+                    }
 
-      // 새로고침을 위한 딜레이 2초
-      setTimeout(() => {
-          chrome.tabs.reload(tab.id, () => {
-              console.log("Tab reloaded successfully!");
-          });
-      }, 2000);
-  } else {
-      console.error("The extension is not allowed to be clicked on this page.");
-      alert("This extension only works on the allowed page.");
-  }
+                    if (!cookies || cookies.length === 0) {
+                        console.warn("No cookies found for poe.game.daum.net.");
+                        alert("No cookies available for the domain.");
+                        return;
+                    }
+
+                    // 쿠키를 "key=value" 형태로 조합
+                    const cookieString = cookies.map(cookie => `${cookie.name}=${cookie.value}`).join("; ");
+                    console.log("Retrieved cookies:", cookieString);
+
+                    // Step 3: 로그인 URL로 이동 및 쿠키 주입
+                    chrome.tabs.update(tabId, { url: loginUrl }, () => {
+                        console.log(`Navigating to ${loginUrl}...`);
+
+                        chrome.tabs.onUpdated.addListener(function listener2(tabId2, changeInfo2) {
+                            if (tabId2 === tab.id && changeInfo2.status === "complete") {
+                                chrome.tabs.onUpdated.removeListener(listener2); // Clean up listener
+                                console.log(`${loginUrl} loaded. Injecting cookies...`);
+
+                                // 쿠키 주입
+                                chrome.scripting.executeScript({
+                                    target: { tabId: tab.id },
+                                    func: (cookieString) => {
+                                        document.cookie = cookieString;
+                                        console.log("Injected cookies:", document.cookie);
+                                    },
+                                    args: [cookieString],
+                                }).then(() => {
+                                    console.log("Cookies injected successfully.");
+
+                                    // Step 4: 최종 URL로 이동
+                                    chrome.tabs.update(tabId, { url: finalUrl }, () => {
+                                        console.log(`Navigated to final URL: ${finalUrl}`);
+                                    });
+                                }).catch(err => {
+                                    console.error("Error injecting cookies:", err);
+                                });
+                            }
+                        });
+                    });
+                });
+            }
+        });
+    });
 });
