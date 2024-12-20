@@ -1,11 +1,11 @@
 {
     "manifest_version": 3,
     "name": "POE2 Trade Website into KR Extension",
-    "version": "1.0",
+    "version": "1.1",
     "description": "Opens POE2 trade website and translates the page.",
-    "permissions": ["tabs", "scripting"],
+    "permissions": ["cookies", "tabs", "scripting", "activeTab"],
     "host_permissions": [
-        "https://poe.game.daum.net/trade2/search/poe2/Standard",
+        "https://poe.game.daum.net/*",
         "https://www.pathofexile.com/*"
     ],
     "background": {
@@ -13,16 +13,13 @@
     },
     "content_scripts": [
         {
-            "matches": [
-                "https://poe.game.daum.net/trade2/search/poe2/Standard",
-                "https://www.pathofexile.com/*"
-            ],
+            "matches": ["https://www.pathofexile.com/*"],
             "js": ["translateData.js"],
             "all_frames": true
         }
     ],
     "action": {
-        "default_title": "Click to open translated POE2 trade website",
+        "default_title": "Click to open POE2 trade website with custom settings",
         "default_icon": "poe2x256.png"
     },
     "icons": {
