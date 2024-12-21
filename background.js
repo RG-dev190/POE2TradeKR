@@ -60,13 +60,20 @@ chrome.action.onClicked.addListener(async () => {
                                         // Step 6: finalUrl로 이동
                                         chrome.tabs.update(tabId, { url: finalUrl }, () => {
                                             console.log(`Navigated to final URL: ${finalUrl}`);
+
+                                            // Step 7: 새로고침
+                                            setTimeout(() => {
+                                                chrome.tabs.reload(tabId, () => {
+                                                    console.log(`Final URL reloaded: ${finalUrl}`);
+                                                });
+                                            }, 2000); // 2초 후 새로고침
                                         });
                                     } else {
                                         console.warn(`${loginUrl} is not fully loaded yet. Please check again.`);
                                     }
                                 }
                             );
-                        }, 3000); // 3초 대기
+                        }, 5000); // 5초 대기
                     });
                 }
             });
